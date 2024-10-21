@@ -10,7 +10,7 @@ namespace VCE.Parser.Parser;
 public class AnalogueParser
 {
     private readonly HttpClientHelper _httpClientHelper;
-    private readonly HttpClient _httpClient;
+    private HttpClient _httpClient;
     public AnalogueParser()
     {
         _httpClientHelper = new HttpClientHelper();
@@ -19,27 +19,20 @@ public class AnalogueParser
 
     public async Task GetRequestAsync(Part part, string url)
     {
-        HttpResponseMessage response = await _httpClient.GetAsync(url);
-        response.EnsureSuccessStatusCode();
-        string html = await response.Content.ReadAsStringAsync();
-
-        HtmlDocument htmlDocument = new HtmlDocument();
-        htmlDocument.LoadHtml(html);
-
-        string href = CheckAnalogue(htmlDocument);
+        string href = CheckAnalogue(part.HtmlDocument);
         if (href != null)
         {
-            response = await _httpClient.GetAsync(href);
+            var response = await _httpClient.GetAsync(href);
             response.EnsureSuccessStatusCode();
-            html = await response.Content.ReadAsStringAsync();
+            var html = await response.Content.ReadAsStringAsync();
 
-            htmlDocument.LoadHtml(html);
+            part.HtmlDocument.LoadHtml(html);
 
-            part.AnalogueParts = ParseAnalogues(htmlDocument);
+            part.AnalogueParts = ParseAnalogues(part.HtmlDocument);
         }
         else
         {
-            part.AnalogueParts = ParseDetailAnalogues(htmlDocument);
+            part.AnalogueParts = ParseDetailAnalogues(part.HtmlDocument);
         }
     }
 
@@ -54,12 +47,6 @@ public class AnalogueParser
             foreach (var node in productNodes)
             {
                 var analoguePart = new AnaloguePart();
-
-                var productNameNode = node.SelectSingleNode(".//div[contains(@class, 'product-name')]/a");
-                if (productNameNode != null)
-                {
-                    analoguePart.Title = productNameNode.InnerText.Trim();
-                }
 
                 var articleNode = node.SelectSingleNode(".//dl[contains(@class, 'dl-horizontal')]/dt[text()='Артикул:']/following-sibling::dd");
                 if (articleNode != null)
@@ -89,28 +76,20 @@ public class AnalogueParser
 
         if (containerNode != null)
         {
-            // XPath для поиска всех продуктов внутри контейнера
             var productNodes = containerNode.SelectNodes(".//div[contains(@class, 'single-product')]");
 
             if (productNodes != null)
             {
                 foreach (var productNode in productNodes)
                 {
-                    // Извлечение названия продукта
-                    var productNameNode = productNode.SelectSingleNode(".//div[contains(@class, 'product-name')]/a");
-                    var productName = productNameNode?.InnerText.Trim() ?? "Не указано";
-
-                    // Извлечение артикула
                     var articleNode = productNode.SelectSingleNode(".//dl[contains(@class, 'dl-horizontal')]/dt[text()='Артикул:']/following-sibling::dd");
                     var article = articleNode?.InnerText.Trim() ?? "Не указано";
 
-                    // Извлечение бренда
-                    var brandNode = productNode.SelectSingleNode(".//dl[contains(@class, 'dl-horizontal')]/dt[text()='PROFIT']/following-sibling::dd");
+                    var brandNode = productNode.SelectSingleNode(".//dl[contains(@class, 'dl-horizontal')]/dt[not(text()='Артикул:')][1]");
                     var brand = brandNode?.InnerText.Trim() ?? "Не указано";
 
                     analogueParts.Add(new AnaloguePart()
                     {
-                        Title = productName,
                         Manufacturer = brand,
                         Name = article
                     });

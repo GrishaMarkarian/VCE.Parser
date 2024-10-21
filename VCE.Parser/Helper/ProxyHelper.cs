@@ -12,7 +12,7 @@ public class ProxyHelper
     {
         random = new Random();
         currentProxyIndex = 0;
-        Proxies = GetAllProxy("C:\\Users\\User\\source\\repos\\VCE.Parser\\VCE.Parser\\Data\\proxy.txt").ToList();
+        Proxies = GetAllProxy("C:\\Users\\Григорий\\Source\\Repos\\VCE.Parser\\VCE.Parser\\Data\\proxy.txt").ToList();
     }
 
     public Proxy GetNextProxy()

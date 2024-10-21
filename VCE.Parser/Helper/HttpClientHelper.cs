@@ -31,6 +31,7 @@ public class HttpClientHelper
             httpClient.DefaultRequestHeaders.Add("X-Requested-With", "XMLHttpRequest");
             httpClient.DefaultRequestHeaders.Add("Referer", "https://vce.com.ua/products/05p634-lpr-tormoznye-kolodki-zadnie");
         }
+        httpClient.Timeout = TimeSpan.FromSeconds(2500);
     }
 
     private void SetProxy(HttpClient httpClient)

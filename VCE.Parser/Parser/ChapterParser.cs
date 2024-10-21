@@ -8,7 +8,7 @@ namespace VCE.Parser.Parser;
 public class ChapterParser
 {
     private readonly HttpClientHelper _httpClientHelper;
-    private readonly HttpClient _httpClient;
+    private HttpClient _httpClient;
     public ChapterParser()
     {
         _httpClientHelper = new HttpClientHelper();
@@ -17,6 +17,7 @@ public class ChapterParser
 
     public async Task<List<string>?>? GetRequestAsync(string url)
     {
+        _httpClient = _httpClientHelper.CreateHttpClient(Chapter.ChapterSite);
         HttpResponseMessage response = await _httpClient.GetAsync(url);
         response.EnsureSuccessStatusCode();
         string html = await response.Content.ReadAsStringAsync();

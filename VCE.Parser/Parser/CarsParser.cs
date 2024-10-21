@@ -1,5 +1,6 @@
 ﻿using HtmlAgilityPack;
 using System;
+using System.Text.RegularExpressions;
 using VCE.Parser.Enum;
 using VCE.Parser.Helper;
 using VCE.Parser.Models;
@@ -9,7 +10,7 @@ namespace VCE.Parser.Parser;
 public class CarsParser
 {
     private readonly HttpClientHelper _httpClientHelper;
-    private readonly HttpClient _httpClient;
+    private HttpClient _httpClient;
     public CarsParser()
     {
         _httpClientHelper = new HttpClientHelper();
@@ -18,20 +19,25 @@ public class CarsParser
 
     public async Task GetRequestAsync(Part parseParts)
     {
-        foreach (var partParse in parseParts.Cars)
+        _httpClient = _httpClientHelper.CreateHttpClient(Chapter.ChapterCars);
+        foreach (var carParse in parseParts.Cars)
         {
-            HttpResponseMessage response = await _httpClient.GetAsync(partParse.Link);
+            HttpResponseMessage response = await _httpClient.GetAsync(carParse.Link);
             response.EnsureSuccessStatusCode();
             string html = await response.Content.ReadAsStringAsync();
             if (html != null)
             {
-                partParse.Complectations = ParseCars(html);
+                var complecatations = ParseCars(html, carParse);
+                if (complecatations != null)
+                {
+                    parseParts.Complectations.AddRange(complecatations);
+                }
             }
         }        
     }
 
 
-    private List<Complectation> ParseCars(string html)
+    private List<Complectation> ParseCars(string html, Cars cars)
     {
         var htmlDoc = new HtmlDocument();
         htmlDoc.LoadHtml(html);
@@ -46,13 +52,18 @@ public class CarsParser
 
             if (cells != null && cells.Count >= 6)
             {
+                var years = (cells[1].InnerText.Trim()).Split("-");
+
                 var complectation = new Complectation
                 {
+                    Brand = cars.Brand,
+                    Model = cars.Model,
                     Body = cells[0].InnerText.Trim(),
-                    Year = cells[1].InnerText.Trim(),
+                    YearStart= ParseDigit(years[0]),
+                    YearEnd = ParseDigit(years[1]),
                     EngineCapacity = cells[2].InnerText.Trim(),
                     PowerEngine = cells[3].InnerText.Trim(),
-                    TypeEngine = cells[4].InnerText.Trim(),
+                    TypeEngine = ParseEngineType(cells[4].InnerText.Trim()),
                     CodeEngine = cells[5].InnerText.Trim()
                 };
 
@@ -63,4 +74,24 @@ public class CarsParser
         return complectations;
     }
 
+    private string ParseDigit(string year)
+    {
+        return Regex.Replace(year, @"[^\d]", "");
+    }
+
+    private string ParseEngineType(string engineType)
+    {
+        if (engineType.Length <= 1)
+        {
+            return "Дизельный двигатель";
+        }
+
+        return engineType;
+    }
+
+    private string ParseBodyType(string bodyType)
+    {
+        return bodyType;
+    }
 }
+

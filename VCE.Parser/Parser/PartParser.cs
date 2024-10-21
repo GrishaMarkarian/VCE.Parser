@@ -8,7 +8,7 @@ namespace VCE.Parser.Parser;
 public class PartParser
 {
     private readonly HttpClientHelper _httpClientHelper;
-    private readonly HttpClient _httpClient;
+    private HttpClient _httpClient;
     public PartParser()
     {
         _httpClientHelper = new HttpClientHelper();
@@ -17,6 +17,7 @@ public class PartParser
 
     public async Task<Part> GetRequestAsync(string url)
     {
+        _httpClient = _httpClientHelper.CreateHttpClient(Chapter.ChapterSite);
         HttpResponseMessage response = await _httpClient.GetAsync(url);
         response.EnsureSuccessStatusCode();
         string html = await response.Content.ReadAsStringAsync();
@@ -37,7 +38,6 @@ public class PartParser
         string? title = ParseTitle(htmlDoc);
         string? manufact = ParseManufact(htmlDoc);
         string? name = ParseName(htmlDoc);
-        string? allCharacteristic = ParseAllCharacteristic(htmlDoc);
         string? price = ParsePrice(htmlDoc);
         List<Cars> cars = ParseCars(htmlDoc);
 
@@ -46,9 +46,9 @@ public class PartParser
             Title = title,
             Manufacturer = manufact,
             Name = name,
-            AllCharacteristic = allCharacteristic,
             Price = price,
-            Cars = cars        
+            Cars = cars,       
+            HtmlDocument = htmlDoc
         };
 
         return part;
@@ -124,28 +124,7 @@ public class PartParser
 
         return name;
     }
-    private string? ParseAllCharacteristic(HtmlDocument htmlDocument)
-    {
-        string listCharacteristic = string.Empty;
-        var dtNodes = htmlDocument.DocumentNode.SelectNodes("//dt");
-        var ddNodes = htmlDocument.DocumentNode.SelectNodes("//dd");
 
-        if (dtNodes != null && ddNodes != null && dtNodes.Count == ddNodes.Count)
-        {
-            for (int i = 0; i < dtNodes.Count; i++)
-            {
-                string characteristic = dtNodes[i].InnerText.Trim();
-
-                string value = ddNodes[i].InnerText.Trim();
-
-                listCharacteristic += ($"{characteristic}:{value}\n");
-            }
-
-            return listCharacteristic;
-        }
-
-        return null;       
-    }
     private string? ParsePrice(HtmlDocument htmlDocument)
     {
         string price = null;
