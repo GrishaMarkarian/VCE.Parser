@@ -63,7 +63,6 @@ public class CarsParser
                     YearEnd = ParseDigit(years[1]),
                     EngineCapacity = cells[2].InnerText.Trim(),
                     PowerEngine = cells[3].InnerText.Trim(),
-                    TypeEngine = ParseEngineType(cells[4].InnerText.Trim()),
                     CodeEngine = cells[5].InnerText.Trim()
                 };
 

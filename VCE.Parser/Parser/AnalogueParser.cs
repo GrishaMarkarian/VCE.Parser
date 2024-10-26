@@ -1,5 +1,6 @@
-﻿
-using HtmlAgilityPack;
+﻿using HtmlAgilityPack;
+using OpenQA.Selenium;
+using OpenQA.Selenium.Chrome;
 using System;
 using VCE.Parser.Enum;
 using VCE.Parser.Helper;
@@ -11,16 +12,19 @@ public class AnalogueParser
 {
     private readonly HttpClientHelper _httpClientHelper;
     private HttpClient _httpClient;
+    private IWebDriver _driver;
     public AnalogueParser()
     {
+        _driver = new ChromeDriver();
         _httpClientHelper = new HttpClientHelper();
         _httpClient = _httpClientHelper.CreateHttpClient(Chapter.ChapterSite);
     }
 
     public async Task GetRequestAsync(Part part, string url)
     {
+        Console.WriteLine(url);
         string href = CheckAnalogue(part.HtmlDocument);
-        if (href != null)
+        if (!string.IsNullOrEmpty(href))
         {
             var response = await _httpClient.GetAsync(href);
             response.EnsureSuccessStatusCode();
@@ -28,48 +32,66 @@ public class AnalogueParser
 
             part.HtmlDocument.LoadHtml(html);
 
-            part.AnalogueParts = ParseAnalogues(part.HtmlDocument);
+            part.AnalogueParts = ParseAnalogues(href);
+
+            
         }
         else
         {
             part.AnalogueParts = ParseDetailAnalogues(part.HtmlDocument);
         }
+
+        Console.WriteLine("");
     }
 
-    private List<AnaloguePart> ParseAnalogues(HtmlDocument htmlDocument)
+    public List<AnaloguePart> ParseAnalogues(string url)
     {
+        Console.WriteLine("ParseAnalogues");
         var analogueParts = new List<AnaloguePart>();
 
-        var productNodes = htmlDocument.DocumentNode.SelectNodes("//div[contains(@class, 'shop-product-area')]//div[contains(@class, 'single-product')]");
+        _driver.Navigate().GoToUrl(url);
 
-        if (productNodes != null)
+        // Locate product nodes
+        var productNodes = _driver.FindElements(By.XPath("//div[contains(@class, 'shop-product-area')]//div[contains(@class, 'single-product')]"));
+
+        foreach (var node in productNodes)
         {
-            foreach (var node in productNodes)
+            var analoguePart = new AnaloguePart();
+
+            try
             {
-                var analoguePart = new AnaloguePart();
-
-                var articleNode = node.SelectSingleNode(".//dl[contains(@class, 'dl-horizontal')]/dt[text()='Артикул:']/following-sibling::dd");
-                if (articleNode != null)
-                {
-                    analoguePart.Name = articleNode.InnerText.Trim();
-                }
-
-                var manufacturerNode = node.SelectSingleNode(".//dl[contains(@class, 'dl-horizontal')]/dt[not(text()='Артикул:')][1]");
-                if (manufacturerNode != null)
-                {
-                    analoguePart.Manufacturer = manufacturerNode.InnerText.Trim();
-                }
-
-                analogueParts.Add(analoguePart);
+                // Locate article node
+                var articleNode = node.FindElement(By.XPath(".//dl[contains(@class, 'dl-horizontal')]/dt[text()='Артикул:']/following-sibling::dd"));
+                analoguePart.Name = articleNode.Text.Trim();
             }
+            catch (NoSuchElementException)
+            {
+                analoguePart.Name = "Не указано"; // Default if not found
+            }
+
+            try
+            {
+                // Locate manufacturer node
+                var manufacturerNode = node.FindElement(By.XPath(".//dl[contains(@class, 'dl-horizontal')]/dt[not(text()='Артикул:')][1]"));
+                analoguePart.Manufacturer = manufacturerNode.Text.Trim();
+            }
+            catch (NoSuchElementException)
+            {
+                analoguePart.Manufacturer = "Не указано"; // Default if not found
+            }
+
+            analogueParts.Add(analoguePart);
         }
 
+        Console.WriteLine(analogueParts.Count);
         return analogueParts;
     }
 
 
     private List<AnaloguePart> ParseDetailAnalogues(HtmlDocument htmlDocument)
     {
+        Console.WriteLine("ParseDetailAnalogues");
+
         var analogueParts = new List<AnaloguePart>();
 
         var containerNode = htmlDocument.DocumentNode.SelectSingleNode("//div[contains(@class, 'container-white mt-10 container-white--analogi')]");
@@ -111,7 +133,7 @@ public class AnalogueParser
             var dataHlk = node.GetAttributeValue("data-hlk", null);
             if (dataHlk != null)
             {
-                return dataHlk;
+                return dataHlk + "?sort=rating&views=grid";
             }
         }
 

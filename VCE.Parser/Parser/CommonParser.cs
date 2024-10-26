@@ -32,56 +32,54 @@ public class CommonParser
             MaxDegreeOfParallelism = Environment.ProcessorCount
         };
 
-        Dictionary<string, string> adsLink = new Dictionary<string, string>();    
+        Dictionary<string, string> adsLink = new Dictionary<string, string>();
         ConcurrentBag<Part> concurrentParts = new ConcurrentBag<Part>();
 
-        try
+        for (int i = 1; i <= countPage; i++)
         {
-            for (int i = 0; i <= countPage; i++)
+            string newUrl = $"{url}?page={i}";
+            var ads = (await _chapterParser.GetRequestAsync(newUrl));
+            var newAds = new List<string>();
+            if (ads != null)
             {
-                string newUrl = $"{url}?page={i}";
-                var ads = (await _chapterParser.GetRequestAsync(newUrl));
-                var newAds = new List<string>();
-                if (ads != null)
+                foreach (var ad in ads)
                 {
-                    foreach (var ad in ads)
+                    if (!adsLink.ContainsKey(ad))
                     {
-                        if (!adsLink.ContainsKey(ad))
-                        {
-                            adsLink.Add(ad, "1");
-                            newAds.Add(ad);
-                        }
+                        adsLink.Add(ad, "1");
+                        newAds.Add(ad);
                     }
-
-                    await Parallel.ForEachAsync(newAds, parallelOptions, async (ad, token) =>
-                    {
-                        var parts = await _partParser.GetRequestAsync(ad);
-
-                        parts.Type = category;
-
-                        await _carsParser.GetRequestAsync(parts);
-
-                        await _analogueParser.GetRequestAsync(parts, ad);
-
-                        concurrentParts.Add(parts);
-
-                    });
-
-                    await SavePartAsync(concurrentParts.ToList());
-                    concurrentParts.Clear();
                 }
 
-                File.AppendAllText("C:\\Users\\Григорий\\Source\\Repos\\VCE.Parser\\VCE.Parser\\Data\\logs.txt", $"Category: {category} Page - {i}/{countPage}" + Environment.NewLine);
-                Console.WriteLine($"Category: {category} Page - {i}/{countPage}");
+                int counter = 0;
+                foreach (var ad in newAds)
+                {
+                    var parts = await _partParser.GetRequestAsync(ad);
+
+                    parts.Type = category;
+
+                    await _carsParser.GetRequestAsync(parts);
+
+                    await _analogueParser.GetRequestAsync(parts, ad);
+
+                    concurrentParts.Add(parts);
+
+                    counter++;
+
+                    if (counter == 10)
+                    {
+                        counter = 0;
+                        await SavePartAsync(concurrentParts.ToList());
+                        concurrentParts.Clear();
+                    }
+                }
+
             }
 
-            await SavePartAsync(concurrentParts.ToList());
-        }
-        catch (Exception ex)
-        {
-            File.AppendAllText("C:\\Users\\Григорий\\Source\\Repos\\VCE.Parser\\VCE.Parser\\Data\\logs.txt", ex.ToString() + Environment.NewLine);
-        }
+            File.AppendAllText("C:\\Users\\Григорий\\Source\\Repos\\VCE.Parser\\VCE.Parser\\Data\\logs.txt", $"Category: {category} Page - {i}/{countPage}" + Environment.NewLine);
+            Console.WriteLine($"Category: {category} Page - {i}/{countPage}");
 
+        }
     }
 
     private async Task SavePartAsync(List<Part> parts)
@@ -94,6 +92,8 @@ public class CommonParser
             {
                 part.SetAnalogueParts();
                 part.SetComplectationsParts();
+
+
                 newParts.Add(part);
             }
         }

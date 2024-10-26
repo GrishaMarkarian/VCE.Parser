@@ -16,7 +16,6 @@ public class Part
     public List<Complectation>? Complectations { get; set; } = new List<Complectation>();
     public List<AnaloguePart>? AnalogueParts { get; set; } = new List<AnaloguePart>();
     public HtmlDocument HtmlDocument { get; set; }
-
     public string AnaloguePartsString { get; set; }
     public string CarsString { get; set; }
 

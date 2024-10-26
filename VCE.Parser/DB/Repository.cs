@@ -10,52 +10,53 @@ public class Repository
 
     public async Task SavePartsAsync(List<Part> parts)
     {
-        //string insertQuery = @"
-        //    INSERT INTO local_db.dbo.Part (Title, Type, Name, Manufacturer, Price, AnaloguePartsString, CarsString) 
-        //    VALUES (@Title, @Type, @Name, @Manufacturer, @Price, @AnaloguePartsString, @CarsString)";
+        string insertQuery = @"
+    INSERT INTO local_db.dbo.Parts_V2 (Title, Type, Name, Manufacturer, Price, AnaloguePartsString, CarsString) 
+    VALUES (@Title, @Type, @Name, @Manufacturer, @Price, @AnaloguePartsString, @CarsString)";
 
-        //try
-        //{
-        //    using (SqlConnection connection = new SqlConnection(connectionString))
-        //    {
-        //        await connection.OpenAsync();
+        try
+        {
+            using (SqlConnection connection = new SqlConnection(connectionString))
+            {
+                await connection.OpenAsync();
 
-        //        using (SqlTransaction transaction = connection.BeginTransaction())
-        //        {
-        //            using (SqlCommand command = new SqlCommand(insertQuery, connection, transaction))
-        //            {
-        //                command.Parameters.Add("@Title", System.Data.SqlDbType.NVarChar);
-        //                command.Parameters.Add("@Type", System.Data.SqlDbType.NVarChar);
-        //                command.Parameters.Add("@Name", System.Data.SqlDbType.NVarChar);
-        //                command.Parameters.Add("@Manufacturer", System.Data.SqlDbType.NVarChar);
-        //                command.Parameters.Add("@Price", System.Data.SqlDbType.NVarChar);
-        //                command.Parameters.Add("@AnaloguePartsString", System.Data.SqlDbType.Text);
-        //                command.Parameters.Add("@CarsString", System.Data.SqlDbType.Text);
+                foreach (var part in parts)
+                {
+                    using (SqlTransaction transaction = connection.BeginTransaction())
+                    {
+                        using (SqlCommand command = new SqlCommand(insertQuery, connection, transaction))
+                        {
+                            command.Parameters.Add("@Title", System.Data.SqlDbType.NVarChar).Value = part.Title;
+                            command.Parameters.Add("@Type", System.Data.SqlDbType.NVarChar).Value = part.Type;
+                            command.Parameters.Add("@Name", System.Data.SqlDbType.NVarChar).Value = part.Name;
+                            command.Parameters.Add("@Manufacturer", System.Data.SqlDbType.NVarChar).Value = part.Manufacturer;
+                            command.Parameters.Add("@Price", System.Data.SqlDbType.NVarChar).Value = part.Price;
+                            command.Parameters.Add("@AnaloguePartsString", System.Data.SqlDbType.Text).Value = part.AnaloguePartsString;
+                            command.Parameters.Add("@CarsString", System.Data.SqlDbType.Text).Value = part.CarsString;
 
-        //                foreach (var part in parts)
-        //                {
-        //                    command.Parameters["@Title"].Value = part.Title;
-        //                    command.Parameters["@Type"].Value = part.Type;
-        //                    command.Parameters["@Name"].Value = part.Name;
-        //                    command.Parameters["@Manufacturer"].Value = part.Manufacturer;
-        //                    command.Parameters["@Price"].Value = part.Price;
-        //                    command.Parameters["@AnaloguePartsString"].Value = part.AnaloguePartsString;
-        //                    command.Parameters["@CarsString"].Value = part.CarsString;
+                            try
+                            {
+                                await command.ExecuteNonQueryAsync();
+                                await transaction.CommitAsync();
+                            }
+                            catch (Exception insertEx)
+                            {
+                                Console.WriteLine($"Error inserting part {part.Name}: {insertEx.Message}");
+                                await transaction.RollbackAsync();
+                                File.AppendAllText("C:\\Users\\Григорий\\Source\\Repos\\VCE.Parser\\VCE.Parser\\Data\\logs.txt", $"Error inserting part {part.Name}: {insertEx.Message}" + Environment.NewLine);
+                            }
+                        }
+                    }
+                }
 
-        //                    await command.ExecuteNonQueryAsync();
-        //                }
-
-        //                await transaction.CommitAsync();
-        //            }
-        //        }
-
-        //        Console.WriteLine($"Save DB");
-        //        File.AppendAllText("C:\\Users\\Григорий\\Source\\Repos\\VCE.Parser\\VCE.Parser\\Data\\logs.txt", $"Save DB" + Environment.NewLine);
-        //    }
-        //}
-        //catch (Exception ex)
-        //{
-        //    Console.WriteLine($"Error: {ex.Message}");
-        //}
+                Console.WriteLine("Save DB");
+                File.AppendAllText("C:\\Users\\Григорий\\Source\\Repos\\VCE.Parser\\VCE.Parser\\Data\\logs.txt", "Save DB" + Environment.NewLine);
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error: {ex.Message}");
+            File.AppendAllText("C:\\Users\\Григорий\\Source\\Repos\\VCE.Parser\\VCE.Parser\\Data\\logs.txt", $"Error: {ex.Message}" + Environment.NewLine);
+        }
     }
 }

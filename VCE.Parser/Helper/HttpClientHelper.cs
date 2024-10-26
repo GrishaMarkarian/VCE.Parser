@@ -17,7 +17,7 @@ public class HttpClientHelper
     {
         HttpClient httpClient = new HttpClient();
         HttpHeadersConfig(chapter, httpClient);
-        SetProxy(httpClient);
+        //SetProxy(httpClient);
 
         return httpClient;
     }

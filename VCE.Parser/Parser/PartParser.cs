@@ -26,6 +26,7 @@ public class PartParser
             return ParseParts(html);
         }
 
+
         return null;
     }
 
@@ -40,6 +41,7 @@ public class PartParser
         string? name = ParseName(htmlDoc);
         string? price = ParsePrice(htmlDoc);
         List<Cars> cars = ParseCars(htmlDoc);
+
 
         part = new Part()
         {
