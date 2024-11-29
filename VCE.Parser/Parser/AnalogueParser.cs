@@ -1,6 +1,7 @@
 ﻿using HtmlAgilityPack;
 using OpenQA.Selenium;
 using OpenQA.Selenium.Chrome;
+using OpenQA.Selenium.Edge;
 using System;
 using VCE.Parser.Enum;
 using VCE.Parser.Helper;
@@ -22,76 +23,115 @@ public class AnalogueParser
 
     public async Task GetRequestAsync(Part part, string url)
     {
-        Console.WriteLine(url);
-        string href = CheckAnalogue(part.HtmlDocument);
-        if (!string.IsNullOrEmpty(href))
+        try
         {
-            var response = await _httpClient.GetAsync(href);
-            response.EnsureSuccessStatusCode();
-            var html = await response.Content.ReadAsStringAsync();
+            string href = CheckAnalogue(part.HtmlDocument);
+            if (!string.IsNullOrEmpty(href))
+            {
+                var response = await ExecuteHttpRequestWithRetry(href);
 
-            part.HtmlDocument.LoadHtml(html);
-
-            part.AnalogueParts = ParseAnalogues(href);
-
-            
+                if (response != null && response.IsSuccessStatusCode)
+                {
+                    var html = await response.Content.ReadAsStringAsync();
+                    part.HtmlDocument.LoadHtml(html);
+                    part.AnalogueParts = ParseAnalogues(href);
+                }
+                else
+                {
+                    Console.WriteLine("Не удалось получить успешный ответ.");
+                    part.AnalogueParts = new List<AnaloguePart>(); // Пустой список, если запрос не успешен
+                }
+            }
+            else
+            {
+                part.AnalogueParts = ParseDetailAnalogues(part.HtmlDocument);
+            }
         }
-        else
+        catch (Exception e)
         {
-            part.AnalogueParts = ParseDetailAnalogues(part.HtmlDocument);
+            Console.WriteLine($"Ошибка при выполнении запроса: {e.Message}");
         }
 
-        Console.WriteLine("");
+    }
+
+    private async Task<HttpResponseMessage?> ExecuteHttpRequestWithRetry(string href, int maxRetries = 3)
+    {
+        int retries = 0;
+        while (retries < maxRetries)
+        {
+            try
+            {
+                var response = await _httpClient.GetAsync(href);
+                response.EnsureSuccessStatusCode();
+                return response;
+            }
+            catch (HttpRequestException e)
+            {
+                Console.WriteLine($"Попытка {retries + 1}: Ошибка HTTP-запроса - {e.Message}");
+                if (retries == maxRetries - 1)
+                {
+                    Console.WriteLine("Достигнут лимит попыток.");
+                    return null;
+                }
+                await Task.Delay(1000); // Пауза перед повтором
+            }
+            retries++;
+        }
+        return null;
     }
 
     public List<AnaloguePart> ParseAnalogues(string url)
     {
-        Console.WriteLine("ParseAnalogues");
         var analogueParts = new List<AnaloguePart>();
 
-        _driver.Navigate().GoToUrl(url);
-
-        // Locate product nodes
-        var productNodes = _driver.FindElements(By.XPath("//div[contains(@class, 'shop-product-area')]//div[contains(@class, 'single-product')]"));
-
-        foreach (var node in productNodes)
+        try
         {
-            var analoguePart = new AnaloguePart();
+            _driver.Navigate().GoToUrl(url);
 
-            try
-            {
-                // Locate article node
-                var articleNode = node.FindElement(By.XPath(".//dl[contains(@class, 'dl-horizontal')]/dt[text()='Артикул:']/following-sibling::dd"));
-                analoguePart.Name = articleNode.Text.Trim();
-            }
-            catch (NoSuchElementException)
-            {
-                analoguePart.Name = "Не указано"; // Default if not found
-            }
+            var productNodes = _driver.FindElements(By.XPath("//div[contains(@class, 'shop-product-area')]//div[contains(@class, 'single-product')]"));
 
-            try
+            foreach (var node in productNodes)
             {
-                // Locate manufacturer node
-                var manufacturerNode = node.FindElement(By.XPath(".//dl[contains(@class, 'dl-horizontal')]/dt[not(text()='Артикул:')][1]"));
-                analoguePart.Manufacturer = manufacturerNode.Text.Trim();
-            }
-            catch (NoSuchElementException)
-            {
-                analoguePart.Manufacturer = "Не указано"; // Default if not found
-            }
+                var analoguePart = new AnaloguePart();
 
-            analogueParts.Add(analoguePart);
+                try
+                {
+                    var articleNode = node.FindElement(By.XPath(".//dl[contains(@class, 'dl-horizontal')]/dt[text()='Артикул:']/following-sibling::dd"));
+                    analoguePart.Name = articleNode.Text.Trim();
+                }
+                catch (NoSuchElementException)
+                {
+                    analoguePart.Name = "Не указано";
+                }
+
+                try
+                {
+                    var manufacturerNode = node.FindElement(By.XPath(".//dl[contains(@class, 'dl-horizontal')]/dt[not(text()='Артикул:')][1]"));
+                    analoguePart.Manufacturer = manufacturerNode.Text.Trim();
+                }
+                catch (NoSuchElementException)
+                {
+                    analoguePart.Manufacturer = "Не указано";
+                }
+
+                analogueParts.Add(analoguePart);
+            }
+        }
+        catch (WebDriverException e)
+        {
+            Console.WriteLine($"Ошибка Selenium: {e.Message}");
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine($"Неизвестная ошибка при парсинге аналогов: {e.Message}");
         }
 
-        Console.WriteLine(analogueParts.Count);
         return analogueParts;
     }
 
 
     private List<AnaloguePart> ParseDetailAnalogues(HtmlDocument htmlDocument)
     {
-        Console.WriteLine("ParseDetailAnalogues");
-
         var analogueParts = new List<AnaloguePart>();
 
         var containerNode = htmlDocument.DocumentNode.SelectSingleNode("//div[contains(@class, 'container-white mt-10 container-white--analogi')]");

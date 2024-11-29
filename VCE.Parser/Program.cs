@@ -5,12 +5,17 @@ using VCE.Parser.Parser;
 
 Elements elements = new Elements();
 
-await Parallel.ForEachAsync(elements.GetElementList(), async (element, token) =>
+var parallelOptions = new ParallelOptions
+{
+    MaxDegreeOfParallelism = 9
+};
+
+await Parallel.ForEachAsync(elements.GetElementList(), parallelOptions, async (element, token) =>
 {
     try
     {
         CommonParser commonParser = new CommonParser();
-        await commonParser.Pars(element.Name, element.Link);
+        await commonParser.Pars(element.Name, element.Link, element.Number);
     }
     catch (Exception ex)
     {

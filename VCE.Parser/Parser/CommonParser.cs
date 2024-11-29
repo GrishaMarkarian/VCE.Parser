@@ -24,18 +24,18 @@ public class CommonParser
     }
 
 
-    public async Task Pars(string category, string url)
+    public async Task Pars(string category, string url, int pages)
     {
         int countPage = await _chapterParser.GetCountPage(url);
         var parallelOptions = new ParallelOptions
         {
-            MaxDegreeOfParallelism = Environment.ProcessorCount
+            MaxDegreeOfParallelism = 30
         };
 
         Dictionary<string, string> adsLink = new Dictionary<string, string>();
         ConcurrentBag<Part> concurrentParts = new ConcurrentBag<Part>();
 
-        for (int i = 1; i <= countPage; i++)
+        for (int i = pages; i <= countPage; i++)
         {
             string newUrl = $"{url}?page={i}";
             var ads = (await _chapterParser.GetRequestAsync(newUrl));
@@ -54,24 +54,32 @@ public class CommonParser
                 int counter = 0;
                 foreach (var ad in newAds)
                 {
-                    var parts = await _partParser.GetRequestAsync(ad);
-
-                    parts.Type = category;
-
-                    await _carsParser.GetRequestAsync(parts);
-
-                    await _analogueParser.GetRequestAsync(parts, ad);
-
-                    concurrentParts.Add(parts);
-
-                    counter++;
-
-                    if (counter == 10)
+                    try
                     {
-                        counter = 0;
-                        await SavePartAsync(concurrentParts.ToList());
-                        concurrentParts.Clear();
+                        var parts = await _partParser.GetRequestAsync(ad);
+
+                        parts.Type = category;
+
+                        await _carsParser.GetRequestAsync(parts);
+
+                        await _analogueParser.GetRequestAsync(parts, ad);
+
+                        concurrentParts.Add(parts);
+
+                        counter++;
+
+                        if (counter == 10)
+                        {
+                            counter = 0;
+                            await SavePartAsync(concurrentParts.ToList());
+                            concurrentParts.Clear();
+                        }
                     }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine(ex.Message);
+                    }
+                    
                 }
 
             }

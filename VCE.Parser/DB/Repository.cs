@@ -22,29 +22,24 @@ public class Repository
 
                 foreach (var part in parts)
                 {
-                    using (SqlTransaction transaction = connection.BeginTransaction())
+                    using (SqlCommand command = new SqlCommand(insertQuery, connection))
                     {
-                        using (SqlCommand command = new SqlCommand(insertQuery, connection, transaction))
-                        {
-                            command.Parameters.Add("@Title", System.Data.SqlDbType.NVarChar).Value = part.Title;
-                            command.Parameters.Add("@Type", System.Data.SqlDbType.NVarChar).Value = part.Type;
-                            command.Parameters.Add("@Name", System.Data.SqlDbType.NVarChar).Value = part.Name;
-                            command.Parameters.Add("@Manufacturer", System.Data.SqlDbType.NVarChar).Value = part.Manufacturer;
-                            command.Parameters.Add("@Price", System.Data.SqlDbType.NVarChar).Value = part.Price;
-                            command.Parameters.Add("@AnaloguePartsString", System.Data.SqlDbType.Text).Value = part.AnaloguePartsString;
-                            command.Parameters.Add("@CarsString", System.Data.SqlDbType.Text).Value = part.CarsString;
+                        command.Parameters.Add("@Title", System.Data.SqlDbType.NVarChar).Value = part.Title;
+                        command.Parameters.Add("@Type", System.Data.SqlDbType.NVarChar).Value = part.Type;
+                        command.Parameters.Add("@Name", System.Data.SqlDbType.NVarChar).Value = part.Name;
+                        command.Parameters.Add("@Manufacturer", System.Data.SqlDbType.NVarChar).Value = part.Manufacturer;
+                        command.Parameters.Add("@Price", System.Data.SqlDbType.NVarChar).Value = part.Price;
+                        command.Parameters.Add("@AnaloguePartsString", System.Data.SqlDbType.Text).Value = part.AnaloguePartsString;
+                        command.Parameters.Add("@CarsString", System.Data.SqlDbType.Text).Value = part.CarsString;
 
-                            try
-                            {
-                                await command.ExecuteNonQueryAsync();
-                                await transaction.CommitAsync();
-                            }
-                            catch (Exception insertEx)
-                            {
-                                Console.WriteLine($"Error inserting part {part.Name}: {insertEx.Message}");
-                                await transaction.RollbackAsync();
-                                File.AppendAllText("C:\\Users\\Григорий\\Source\\Repos\\VCE.Parser\\VCE.Parser\\Data\\logs.txt", $"Error inserting part {part.Name}: {insertEx.Message}" + Environment.NewLine);
-                            }
+                        try
+                        {
+                            await command.ExecuteNonQueryAsync();
+                        }
+                        catch (Exception insertEx)
+                        {
+                            Console.WriteLine($"Error inserting part {part.Name}: {insertEx.Message}");
+                            File.AppendAllText("C:\\Users\\Григорий\\Source\\Repos\\VCE.Parser\\VCE.Parser\\Data\\logs.txt", $"Error inserting part {part.Name}: {insertEx.Message}" + Environment.NewLine);
                         }
                     }
                 }

@@ -1,4 +1,6 @@
 ﻿using HtmlAgilityPack;
+using System.Reflection.Metadata;
+using System.Xml.Linq;
 using VCE.Parser.Enum;
 using VCE.Parser.Helper;
 using VCE.Parser.Models;
@@ -42,6 +44,9 @@ public class PartParser
         string? price = ParsePrice(htmlDoc);
         List<Cars> cars = ParseCars(htmlDoc);
 
+        Console.WriteLine(title);
+        Console.WriteLine(name);
+        Console.WriteLine(manufact);
 
         part = new Part()
         {
@@ -105,11 +110,12 @@ public class PartParser
     private string? ParseManufact(HtmlDocument htmlDocument)
     {
         string manufact = null;
-        var manufacturerNode = htmlDocument.DocumentNode.SelectSingleNode("//dt[text()='Производитель']/following-sibling::dd/strong[@itemprop='brand']");
+        var manufacturerNode = htmlDocument.DocumentNode.SelectSingleNode("//meta[@itemprop='name']");
 
         if (manufacturerNode != null)
         {
-            manufact = manufacturerNode.InnerText.Trim();
+            string contentValue = manufacturerNode.GetAttributeValue("content", "default_value");
+            return contentValue;
         }
 
         return manufact;
@@ -117,7 +123,7 @@ public class PartParser
     private string? ParseName(HtmlDocument htmlDocument)
     {
         string name = null;
-        var catalogNumberNode = htmlDocument.DocumentNode.SelectSingleNode("//dt[text()='Каталожный номер']/following-sibling::dd/strong[@itemprop='mpn']");
+        var catalogNumberNode = htmlDocument.DocumentNode.SelectSingleNode("//strong[@id='kat-num-txt']");
 
         if (catalogNumberNode != null)
         {
